@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { Octokit } from "@octokit/rest";
 
-// GitHub Repository interface (matching our domain)
+// GitHub Repository interface (updated for bot user approach)
 const repositoryArg = v.object({
   _id: v.string(),
   _creationTime: v.number(),
@@ -10,26 +10,35 @@ const repositoryArg = v.object({
   owner: v.string(),
   name: v.string(),
   fullName: v.string(),
-  accessToken: v.string(),
   defaultBranch: v.string(),
   isActive: v.boolean(),
   createdAt: v.number(),
   updatedAt: v.number(),
 });
 
-// Validate GitHub repository access
+// Get GitHub bot configuration
+function getBotOctokit() {
+  const botToken = process.env.GITHUB_BOT_TOKEN;
+  if (!botToken) {
+    throw new Error("GitHub bot token not configured. Please set GITHUB_BOT_TOKEN environment variable.");
+  }
+  
+  return new Octokit({
+    auth: botToken,
+  });
+}
+
+// Validate GitHub repository access (using bot user)
 export const validateRepository = action({
   args: {
     owner: v.string(),
     name: v.string(),
-    accessToken: v.string(),
   },
   handler: async (ctx, args) => {
     try {
-      const octokit = new Octokit({
-        auth: args.accessToken,
-      });
+      const octokit = getBotOctokit();
 
+      // Check if bot has access to the repository
       await octokit.rest.repos.get({
         owner: args.owner,
         repo: args.name,
@@ -38,7 +47,86 @@ export const validateRepository = action({
       return true;
     } catch (error) {
       console.error("GitHub validation error:", error);
+      if (error instanceof Error && error.message.includes("404")) {
+        throw new Error(`Repository ${args.owner}/${args.name} not found or bot doesn't have access. Please ensure the BlackBox AI bot user is added as a collaborator to the repository.`);
+      }
       return false;
+    }
+  },
+});
+
+// Check if bot has write access to repository
+export const validateBotAccess = action({
+  args: {
+    owner: v.string(),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const octokit = getBotOctokit();
+
+      // Try to get repository permissions
+      const { data: repo } = await octokit.rest.repos.get({
+        owner: args.owner,
+        repo: args.name,
+      });
+
+      // Check if we can create a branch (test write access)
+      const testBranchName = `blackbox-ai-test-${Date.now()}`;
+      
+      try {
+        // Get default branch SHA
+        const { data: ref } = await octokit.rest.git.getRef({
+          owner: args.owner,
+          repo: args.name,
+          ref: `heads/${repo.default_branch}`,
+        });
+
+        // Try to create a test branch
+        await octokit.rest.git.createRef({
+          owner: args.owner,
+          repo: args.name,
+          ref: `refs/heads/${testBranchName}`,
+          sha: ref.object.sha,
+        });
+
+        // Clean up test branch
+        await octokit.rest.git.deleteRef({
+          owner: args.owner,
+          repo: args.name,
+          ref: `heads/${testBranchName}`,
+        });
+
+        return {
+          hasAccess: true,
+          permissions: {
+            read: true,
+            write: true,
+            admin: repo.permissions?.admin || false,
+          }
+        };
+      } catch (writeError) {
+        return {
+          hasAccess: false,
+          permissions: {
+            read: true,
+            write: false,
+            admin: false,
+          },
+          error: "Bot doesn't have write access to repository. Please ensure the BlackBox AI bot user is added as a collaborator with write permissions."
+        };
+      }
+    } catch (error) {
+      console.error("GitHub bot access validation error:", error);
+      return {
+        hasAccess: false,
+        permissions: {
+          read: false,
+          write: false,
+          admin: false,
+        },
+        error: error instanceof Error ? error.message : "Unknown error occurred"
+      };
     }
   },
 });
@@ -50,9 +138,7 @@ export const getRepositoryContext = action({
   },
   handler: async (ctx, args) => {
     try {
-      const octokit = new Octokit({
-        auth: args.repository.accessToken,
-      });
+      const octokit = getBotOctokit();
 
       // Get repository tree
       const { data: tree } = await octokit.rest.git.getTree({
@@ -121,9 +207,7 @@ export const createBranch = action({
   },
   handler: async (ctx, args) => {
     try {
-      const octokit = new Octokit({
-        auth: args.repository.accessToken,
-      });
+      const octokit = getBotOctokit();
 
       // Get the SHA of the base branch
       const { data: ref } = await octokit.rest.git.getRef({
@@ -162,9 +246,7 @@ export const commitChanges = action({
   },
   handler: async (ctx, args) => {
     try {
-      const octokit = new Octokit({
-        auth: args.repository.accessToken,
-      });
+      const octokit = getBotOctokit();
 
       // Get current branch reference
       const { data: ref } = await octokit.rest.git.getRef({
@@ -263,9 +345,7 @@ export const createPullRequest = action({
   },
   handler: async (ctx, args) => {
     try {
-      const octokit = new Octokit({
-        auth: args.repository.accessToken,
-      });
+      const octokit = getBotOctokit();
 
       const { data: pr } = await octokit.rest.pulls.create({
         owner: args.repository.owner,

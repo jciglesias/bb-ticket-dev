@@ -1,13 +1,12 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
-// Add a new repository for a user
+// Add a new repository for a user (bot user approach)
 export const addRepository = mutation({
   args: {
     userId: v.id("users"),
     owner: v.string(),
     name: v.string(),
-    accessToken: v.string(),
     defaultBranch: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -17,7 +16,6 @@ export const addRepository = mutation({
       owner: args.owner,
       name: args.name,
       fullName: `${args.owner}/${args.name}`,
-      accessToken: args.accessToken,
       defaultBranch: args.defaultBranch || "main",
       isActive: true,
       createdAt: now,
@@ -83,7 +81,6 @@ export const updateRepository = mutation({
   args: {
     repositoryId: v.id("repositories"),
     updates: v.object({
-      accessToken: v.optional(v.string()),
       defaultBranch: v.optional(v.string()),
       isActive: v.optional(v.boolean()),
     }),

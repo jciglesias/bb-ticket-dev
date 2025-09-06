@@ -4,8 +4,8 @@ import { api } from "./_generated/api";
 
 // Main API endpoints for the ticket development system
 
-// Create a complete workflow: user -> repository -> ticket -> process
-export const createUserWithRepo = mutation({
+// Create a complete workflow: user -> repository -> ticket -> process (with bot validation)
+export const createUserWithRepo = action({
   args: {
     userData: v.object({
       email: v.string(),
@@ -15,11 +15,20 @@ export const createUserWithRepo = mutation({
     repositoryData: v.object({
       owner: v.string(),
       name: v.string(),
-      accessToken: v.string(),
       defaultBranch: v.optional(v.string()),
     }),
   },
   handler: async (ctx, args) => {
+    // Validate bot access to repository first
+    const botAccess = await ctx.runAction(api.github.validateBotAccess, {
+      owner: args.repositoryData.owner,
+      name: args.repositoryData.name,
+    });
+
+    if (!botAccess.hasAccess) {
+      throw new Error(`Bot doesn't have access to repository ${args.repositoryData.owner}/${args.repositoryData.name}. ${botAccess.error || 'Please ensure the BlackBox AI bot user is added as a collaborator with write permissions.'}`);
+    }
+
     // Create user first
     const user = await ctx.runMutation(api.users.createUser, args.userData);
     
@@ -36,6 +45,7 @@ export const createUserWithRepo = mutation({
     return {
       user,
       repository,
+      botAccess,
     };
   },
 });

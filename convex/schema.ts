@@ -15,12 +15,12 @@ export default defineSchema({
     .index("by_email", ["email"]),
 
   // Repositories table (GitHub repositories owned by users)
+  // Note: Uses bot user authentication instead of individual access tokens
   repositories: defineTable({
     userId: v.id("users"),
     owner: v.string(), // GitHub repo owner
     name: v.string(),  // GitHub repo name
     fullName: v.string(), // owner/name
-    accessToken: v.string(), // GitHub access token
     defaultBranch: v.string(),
     isActive: v.boolean(),
     createdAt: v.number(),
