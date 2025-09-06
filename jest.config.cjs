@@ -7,8 +7,13 @@ module.exports = {
     '**/*.(test|spec).+(ts|tsx|js)'
   ],
   transform: {
-    '^.+\\.(ts|tsx)$': 'ts-jest'
+    '^.+\\.(ts|tsx)$': ['ts-jest', {
+      useESM: true
+    }]
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(convex)/)'
+  ],
   collectCoverageFrom: [
     'convex/blackbox.ts',
     'convex/api.ts',
@@ -20,10 +25,11 @@ module.exports = {
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@convex/(.*)$': '<rootDir>/convex/$1'
   },
   testTimeout: 30000,
-  verbose: true
+  verbose: true,
+  extensionsToTreatAsEsm: ['.ts']
 };

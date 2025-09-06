@@ -22,3 +22,28 @@ lerna-debug.log*
 # temp directory
 .temp
 .tmp
+
+# Convex
+.convex/
+convex/_generated/
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+.env.local

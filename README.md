@@ -1,219 +1,163 @@
-# BB Ticket Dev - GitHub AI Development API
+# BlackBox AI Ticket Development System
 
-An API service that receives a GitHub repository and development ticket, uses BlackBox AI to generate code changes, and automatically creates commits to the repository.
+A multi-user, Domain-Driven Design (DDD) application built with Convex and Node.js that automatically processes development tickets using GitHub repositories and BlackBox AI integration.
 
-## Features
+## 🏗️ System Architecture
 
-- 🤖 **AI-Powered Development**: Uses BlackBox AI (Claude 3.5 Sonnet) to analyze repositories and implement tickets
-- 🔄 **Automated Commits**: Automatically creates and pushes commits to GitHub repositories
-- 📁 **Full Repository Analysis**: Reads entire repository structure for context-aware development
-- 🛡️ **Error Handling**: Comprehensive error handling and validation
-- 🚀 **RESTful API**: Simple HTTP API for easy integration
-
-## Installation
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd bb-ticket-dev
+```
+User → Repository → Tickets → Development Tasks → Pull Requests
 ```
 
-2. Install dependencies:
-```bash
-npm install
+Each user operates in isolation with their own:
+- GitHub repositories (with access tokens)
+- Development tickets
+- Processing workflows
+- Generated code and PRs
+
+## 🚀 Core Features
+
+- **Multi-User Support**: Isolated workflows per user/repository
+- **GitHub Integration**: Branch creation, commits, and Pull Request automation
+- **BlackBox AI Integration**: Automated code generation using Claude 3.5 Sonnet
+- **Pull Request Management**: Automated PR creation with customizable content
+- **Real-time Processing**: Async task processing with status tracking
+
+## �️ Quick Start
+
+1. **Setup**:
+   ```bash
+   git clone <repository-url>
+   cd bb-ticket-dev
+   npm install
+   npx convex dev --configure
+   ```
+
+2. **Environment Configuration**:
+   ```bash
+   cp .env.example .env.local
+   # Add your BlackBox AI API key and other config
+   ```
+
+3. **Start Development**:
+   ```bash
+   npx convex dev
+   ```
+
+## 💻 Usage
+
+### Basic Workflow
+
+```typescript
+import { api } from "./convex/_generated/api";
+
+// 1. Create user and repository
+const userRepo = await convex.mutation(api.api.createUserWithRepo, {
+  userData: {
+    email: "dev@example.com",
+    name: "Developer",
+    githubUsername: "devuser",
+  },
+  repositoryData: {
+    owner: "devuser",
+    name: "my-project",
+    accessToken: "ghp_your_token",
+  },
+});
+
+// 2. Create and process ticket
+const ticket = await convex.mutation(api.api.createAndProcessTicket, {
+  userId: userRepo.user._id,
+  repositoryId: userRepo.repository._id,
+  ticketData: {
+    title: "Add Authentication",
+    description: "Implement JWT authentication system",
+    priority: "high",
+  },
+  autoProcess: true,
+});
+
+// 3. Create Pull Request (after task completion)
+const pr = await convex.action(api.api.createTaskPullRequest, {
+  taskId: ticket.task._id,
+  userId: userRepo.user._id,
+  title: "Add JWT Authentication System", // Optional
+  description: "Custom PR description", // Optional
+});
 ```
 
-3. Configure environment variables:
-```bash
-cp .env.example .env
-# Edit .env with your API keys
-```
-
-4. Start the server:
-```bash
-npm start
-```
-
-## Environment Variables
-
-Create a `.env` file with the following variables:
-
-```env
-# BlackBox AI API Configuration
-BLACKBOX_API_KEY=your_blackbox_api_key_here
-
-# Server Configuration
-PORT=8000
-```
-
-## API Endpoints
-
-### POST /api/develop-ticket
-
-Develops a ticket for a GitHub repository using AI and creates a commit.
-
-**Request Body:**
-```json
-{
-  "repoUrl": "https://github.com/username/repository",
-  "ticket": "Add user authentication system with JWT tokens",
-  "githubToken": "ghp_your_github_personal_access_token"
-}
-```
-
-**Response:**
-```json
-{
-  "message": "Ticket developed and committed successfully",
-  "commitSha": "abc123def456...",
-  "commitMessage": "Add user authentication system with JWT tokens",
-  "filesModified": 3
-}
-```
-
-**Error Response:**
-```json
-{
-  "error": "Failed to process ticket",
-  "details": "Error description"
-}
-```
-
-### GET /health
-
-Health check endpoint to verify the API is running.
-
-**Response:**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2024-01-15T10:30:00.000Z"
-}
-```
-
-## Usage Examples
-
-### Using cURL
+### Available Scripts
 
 ```bash
-curl -X POST http://localhost:8000/api/develop-ticket \
-  -H "Content-Type: application/json" \
-  -d '{
-    "repoUrl": "https://github.com/username/my-project",
-    "ticket": "Implement user registration endpoint with email validation",
-    "githubToken": "ghp_your_token_here"
-  }'
+npm run demo          # Basic demo
+npm run demo:pr       # Pull Request demo
+npm run test:pr       # Test PR functionality
+npm run test:blackbox # Test AI integration
 ```
 
-### Using JavaScript/Node.js
+## 🔄 Development Workflow
 
-```javascript
-const axios = require('axios');
+1. **Ticket Creation** → User creates development task
+2. **AI Processing** → BlackBox AI generates code
+3. **GitHub Integration** → Creates branch and commits changes
+4. **Pull Request** → Creates PR for code review
+5. **Notifications** → User receives completion updates
 
-const developTicket = async () => {
-  try {
-    const response = await axios.post('http://localhost:8000/api/develop-ticket', {
-      repoUrl: 'https://github.com/username/my-project',
-      ticket: 'Add password reset functionality',
-      githubToken: 'ghp_your_token_here'
-    });
-    
-    console.log('Success:', response.data);
-  } catch (error) {
-    console.error('Error:', error.response.data);
-  }
-};
+## 🔧 Core API Functions
 
-developTicket();
+### Main Endpoints
+- `api.createUserWithRepo` - Create user and repository
+- `api.createAndProcessTicket` - Create and auto-process ticket
+- `api.createTaskPullRequest` - Create PR for completed task
+- `api.getUserDashboard` - Get user statistics and activity
+
+### Status Monitoring
+- `api.getSystemStats` - System-wide statistics
+- `tasks.getTask` - Individual task status
+- `tasks.getUserTasks` - User's task list
+
+## � Database Schema
+
+### Core Tables
+- **users**: User accounts and GitHub info
+- **repositories**: GitHub repos with access tokens
+- **tickets**: Development tasks/requirements
+- **developmentTasks**: Processing workflow records
+
+### Key Fields
+- Tasks include: `branchName`, `commitSha`, `pullRequestUrl`, `pullRequestNumber`
+- All tables have user isolation via `userId` foreign keys
+
+## 🔒 Security & Isolation
+
+- **User Isolation**: Each user operates independently
+- **GitHub Tokens**: User-provided, securely stored
+- **Access Control**: All operations validate user ownership
+- **Repository Permissions**: Users can only access their own repos
+
+## 🚦 Task Status Flow
+
+```
+pending → queued → analyzing → generating → committing → completed
+                    ↓              ↓            ↓
+                 failed ←     failed ←     failed
 ```
 
-### Using Python
+## 🎯 Current Status
 
-```python
-import requests
+- ✅ **Multi-user architecture implemented**
+- ✅ **BlackBox AI integration active** (Claude 3.5 Sonnet)
+- ✅ **GitHub integration complete** (branch, commit, PR)
+- ✅ **Pull Request automation ready**
+- ✅ **Real-time notifications working**
 
-url = "http://localhost:8000/api/develop-ticket"
-data = {
-    "repoUrl": "https://github.com/username/my-project",
-    "ticket": "Implement file upload feature with validation",
-    "githubToken": "ghp_your_token_here"
-}
+## 🔮 Roadmap
 
-response = requests.post(url, json=data)
-print(response.json())
-```
+- [ ] Code Review Integration
+- [ ] Slack/Discord Notifications  
+- [ ] Advanced AI Prompting
+- [ ] Batch Processing
+- [ ] Analytics Dashboard
 
-## How It Works
+## 📝 License
 
-1. **Repository Analysis**: The API fetches all files from the specified GitHub repository
-2. **AI Processing**: Sends the repository context and ticket to BlackBox AI for analysis
-3. **Code Generation**: AI generates the necessary code changes and file modifications
-4. **Commit Creation**: Creates a new commit with the generated changes
-5. **Push to GitHub**: Automatically pushes the commit to the repository
-
-## GitHub Token Requirements
-
-Your GitHub personal access token needs the following permissions:
-- `repo` (Full control of private repositories)
-- `public_repo` (Access to public repositories)
-
-To create a token:
-1. Go to GitHub Settings → Developer settings → Personal access tokens
-2. Generate new token (classic)
-3. Select required scopes
-4. Copy the token and add it to your requests
-
-## Error Handling
-
-The API handles various error scenarios:
-- Invalid repository URLs
-- Missing required fields
-- GitHub API errors
-- BlackBox AI API errors
-- Network connectivity issues
-
-All errors return appropriate HTTP status codes and descriptive error messages.
-
-## Security Considerations
-
-- Never commit your `.env` file with real API keys
-- Use environment variables for sensitive configuration
-- Validate GitHub tokens before processing requests
-- Consider rate limiting for production use
-- Use HTTPS in production environments
-
-## Development
-
-### Running in Development Mode
-
-```bash
-npm run dev
-```
-
-### Testing the API
-
-```bash
-# Health check
-curl http://localhost:8000/health
-
-# Test with a sample request
-curl -X POST http://localhost:8000/api/develop-ticket \
-  -H "Content-Type: application/json" \
-  -d '{"repoUrl": "https://github.com/test/repo", "ticket": "test", "githubToken": "test"}'
-```
-
-## License
-
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## Support
-
-For issues and questions, please create an issue in the GitHub repository.
+ISC License - See LICENSE file for details.

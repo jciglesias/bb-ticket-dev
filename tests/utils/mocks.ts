@@ -1,6 +1,7 @@
 // Test utilities and mocks
+import { jest } from '@jest/globals';
 
-export const mockFetch = jest.fn();
+export const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
 
 // Mock Convex context
 export const createMockConvexContext = () => ({
@@ -83,13 +84,13 @@ export const mockTask = {
 };
 
 // Helper to create mock Response objects
-export const createMockResponse = (data: any, status = 200, ok = true) => ({
+export const createMockResponse = (data: any, status = 200, ok = true): Response => ({
   ok,
   status,
   statusText: ok ? 'OK' : 'Error',
   json: jest.fn().mockResolvedValue(data),
   text: jest.fn().mockResolvedValue(JSON.stringify(data)),
-});
+} as Response);
 
 // Helper to setup fetch mock
 export const setupFetchMock = (response: any, shouldReject = false) => {
@@ -98,7 +99,26 @@ export const setupFetchMock = (response: any, shouldReject = false) => {
   } else {
     mockFetch.mockResolvedValue(createMockResponse(response));
   }
-  global.fetch = mockFetch;
+  (global as any).fetch = mockFetch;
+};
+
+// Mock Convex utilities
+export const mockConvexAction = (config: { args: any; handler: any }) => config.handler;
+
+export const mockConvexV = {
+  object: jest.fn((obj: any) => obj),
+  string: jest.fn(() => 'string'),
+  number: jest.fn(() => 'number'),
+  boolean: jest.fn(() => 'boolean'),
+  optional: jest.fn((type: any) => type),
+  array: jest.fn((type: any) => type),
+  union: jest.fn((...types: any[]) => types),
+  literal: jest.fn((value: any) => value),
+};
+
+// Mock Convex server imports
+export const mockConvexServer = {
+  action: mockConvexAction,
 };
 
 // Reset all mocks
